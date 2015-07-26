@@ -1,0 +1,12 @@
+cita-me (0.0.3.0-1ubuntu1) oneiric; urgency=low
+
+  * Cita-me can use fortune
+  * Cita-me can read citations
+
+ -- Lorenzo Carbonell <lorenzo.carbonell.cerezo@gmail.com>  Sun, 06 Nov 2011 22:26:41 +0100
+
+cita-me (0.0.2.1-1ubuntu1) oneiric; urgency=low
+
+  * Sencond release
+
+ -- Lorenzo Carbonell <lorenzo.carbonell.cerezo@gmail.com>  Sat, 29 Oct 2011 13:08:49 +0200

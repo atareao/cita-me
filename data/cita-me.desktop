@@ -1,0 +1,12 @@
+
+[Desktop Entry]
+Name=cita-me
+Exec=/usr/bin/cita-me
+Comment=cita-me
+Icon=/usr/share/pixmaps/cita-me.svg
+Type=Application
+Terminal=false
+StartupNotify=true
+Encoding=UTF-8
+Categories=Utility;
+Name[es]=cita-me.desktop

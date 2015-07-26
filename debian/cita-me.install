@@ -1,0 +1,3 @@
+bin/* /usr/bin
+data/cita-me.desktop /usr/share/applications
+data/icons/cita-me.svg /usr/share/pixmaps

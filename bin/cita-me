@@ -1,0 +1,206 @@
+#!/usr/bin/python
+# -*- coding: iso-8859-15 -*-
+#
+__author__='Lorenzo Carbonell <lorenzo.carbonell.cerezo@gmail.com>'
+__date__ ='$01-enero-2011 20:00:00$'
+#
+# A simple application to look up for definitions
+#
+# Copyright (C) 2011 Lorenzo Carbonell
+# lorenzo.carbonell.cerezo@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#
+import sys
+import urllib
+import lxml.html as lh
+import os
+import stat
+import time
+import shlex, subprocess
+from lxml.html.clean import clean_html
+from gi.repository import Notify
+from optparse import OptionParser
+import locale
+
+language, output_encoding = locale.getdefaultlocale()
+
+def ejecuta(comando):
+	args = shlex.split(comando)
+	p = subprocess.Popen(args, bufsize=10000, stdout=subprocess.PIPE)
+	valor = p.communicate()[0]
+	return valor
+
+if sys.version_info[0] == 3:	
+	import urllib.request
+	def read_from_url(url):
+		url = url.replace(' ','%20')
+		request = urllib.request.Request(url, headers={'User-Agent' : 'Magic Browser'})
+		f = urllib.request.urlopen(request)
+		json_string = f.read()
+		f.close()
+		return json_string
+
+	def internet_on():
+		try:
+			response=urllib.request.urlopen('http://google.com',timeout=1)
+			return True
+		except:
+			pass
+		return False
+	def fromunicode(cadena):
+		return cadena
+
+else:
+	import urllib2
+	import urllib	
+	def read_from_url(url):
+		url = url.replace(' ','%20')
+		request = urllib2.Request(url, headers={'User-Agent' : 'Magic Browser'})
+		f = urllib2.urlopen(request)
+		json_string = f.read()
+		f.close()
+		return json_string
+		
+	def internet_on():
+		try:
+			response=urllib2.urlopen('http://google.com',timeout=1)
+			return True
+		except:
+			pass
+		return False
+	def fromunicode(cadena):
+		if type(cadena) == unicode:
+			ans = cadena.encode('utf-8')
+			print(type(ans),ans)
+			return ans
+		return cadena
+
+def get_message():
+	uri = 'http://www.proverbia.net/'
+	#code = urllib.request.urlopen(urllib.request.Request(uri, headers={'User-Agent' : "Magic Browser"}))
+	code = read_from_url(uri)
+	encoding = 'iso-8859-1'
+	doc = lh.document_fromstring(clean_html(unicode(code,encoding)))
+	fdd = doc.get_element_by_id('frasedeldia')
+	autor = fdd[1].text_content().encode(output_encoding).strip()
+	fdd.remove(fdd[2])
+	fdd.remove(fdd[1])
+	frase = fdd.text_content().split('\n')[1].encode(output_encoding).strip()
+	return autor,frase
+
+def show_notification(use_fortune = True,use_speak = False):
+	if use_fortune:
+		frase = ejecuta('fortune')
+		autor = 'cita-me'
+		if frase.find('--')>-1:
+			frase = frase.split('--')
+			autor = frase[1].strip()
+			frase = frase[0].replace('\n',' ').replace('\t','')
+			print(frase)
+	else:
+		autor,frase = get_message()
+	notification = Notify.Notification.new(autor,frase,None)
+	notification.show()
+	if use_speak:
+		print('*********************************si**********************')
+		ejecuta('espeak -v mb-es1 "%s"'%frase)
+	
+def show(use_fortune = False,use_speak = False):
+	if not use_fortune:
+		contador = 0
+		while internet_on() == False:
+			time.sleep(1)
+			contador += 1
+			if contador > 10:
+				exit(0)	
+	Notify.init('cita-me')
+	show_notification(use_fortune,use_speak)
+	exit(0)
+
+def set_autostart(autostart=False,use_fortune = False,use_speak = False):
+	filestart = os.path.join(os.getenv("HOME"),".config/autostart/cita-me.desktop")
+	if os.path.exists(filestart):
+			os.remove(filestart)
+	if autostart:
+		if not os.path.exists(filestart):
+			if not os.path.exists(os.path.dirname(filestart)):
+				os.makedirs(os.path.dirname(filestart))
+			f = open(filestart,'w')
+			f.write('[Desktop Entry]\n')
+			f.write('Type=Application\n')
+			command = 'Exec=/usr/bin/cita-me -s'
+			if use_fortune:
+				command += ' -f'
+			if use_speak:
+				command += ' -e'
+			f.write('%s\n'%command)
+			f.write('Icon=/usr/share/pixmaps/cita-me.svg\n')
+			f.write('Hidden=false\n')
+			f.write('NoDisplay=false\n')
+			f.write('X-GNOME-Autostart-enabled=true\n')
+			f.write('Name[es_ES]=cita-me\n')
+			f.write('Name=cita-me\n')
+			f.write('Comment=cita-me\n')
+			f.close()
+			if os.path.exists(filestart):
+				os.chmod(filestart,stat.S_IRWXU)		
+		
+if __name__ == '__main__':
+	usage_msg = 'usage: %prog [options]'
+	parser = OptionParser(usage=usage_msg, add_help_option=False)
+	parser.add_option('-h', '--help',
+			action='store_true',
+			dest='help',
+			default=False,
+			help='muestra la ayuda y sale')
+	parser.add_option('-s', '--show',
+			action='store_true',
+			dest='show',
+			default=False,
+			help='muestra una cita')
+	parser.add_option('-f', '--use-fortune',
+			action='store_true',
+			dest='use_fortune',
+			default=False,
+			help='utiliza fortune en lugar de proverbia.net')
+	parser.add_option('-a', '--autostart',
+			action='store_true',
+			dest='autostart',
+			default=False,
+			help='para que cita-me se inicie de forma automatica')
+	parser.add_option('-e','--speak',
+			action='store_true',
+			dest='speak',
+			default=False,
+			help='lee la cita')
+	parser.add_option('-r', '--remove',
+			action='store_true',
+			dest='remove',
+			default=False,
+			help='quita cita-me del autoinicio')
+	(options, args) = parser.parse_args()
+	if options.help:
+		parser.print_help()
+	elif options.autostart:
+		set_autostart(True,use_fortune = options.use_fortune,use_speak = options.speak)
+	elif options.remove:
+		set_autostart(False)
+	elif options.show:
+		show(use_fortune = options.use_fortune,use_speak = options.speak)
+	else:
+		parser.print_help()
+	exit(0)
